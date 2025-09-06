@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "typeRoots": ["src/types", "./node_modules/@types"],
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "rootDir": "src",
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
