@@ -589,288 +589,197 @@ export const AnalyseDepense: React.FC = () => {
   if (isError) return <div className="text-center py-8 text-red-600">Erreur lors du chargement des dépenses</div>;
 
   return (
-    <div>
-      <div className="space-y-6">
-        {/* En-tête */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Analyse des Dépenses</h2>
-            <p className="text-gray-600 mt-1">
-              Total pour la période :{" "}
-              <span className="font-semibold text-red-600">
-                {(() => {
-                  const dateFiltered = filterExpensesByDateRange(depenses, dateRange.start, dateRange.end);
-                  const categoryFiltered = selectedCategory === "all"
-                    ? dateFiltered
-                    : dateFiltered.filter(d => d.categorie === selectedCategory);
-                  return categoryFiltered.reduce((sum, d) => sum + d.montant, 0).toLocaleString("fr-FR");
-                })()} €
-              </span>
-            </p>
-          </div>
-
-         
-         
-
-          {/* 🔹 Sélecteurs de plage de dates */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Du</label>
-              <input
-                type="date"
-                value={startOfDay(dateRange.start).toISOString().slice(0, 10)}
-                onChange={(e) => {
-                  const parts = e.target.value.split("-").map(Number);
-                  if (parts.length === 3) {
-                    const [y, m, d] = parts;
-                    setDateRange(prev => ({
-                      ...prev,
-                      start: new Date(y, m - 1, d)
-                    }));
-                  }
-                }}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Au</label>
-              <input
-                type="date"
-                value={startOfDay(dateRange.end).toISOString().slice(0, 10)}
-                onChange={(e) => {
-                  const parts = e.target.value.split("-").map(Number);
-                  if (parts.length === 3) {
-                    const [y, m, d] = parts;
-                    setDateRange(prev => ({
-                      ...prev,
-                      end: new Date(y, m - 1, d)
-                    }));
-                  }
-                }}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </div>
-
-
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* ========================== */}
-          {/* 🔹 Card 1 : Dépenses par période */}
-          {/* ========================== */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Dépenses par période
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-2 gap-4">
-              <KpiCard title="Aujourd’hui" amount={totalToday} />
-              <KpiCard title="Cette semaine" amount={totalThisWeek} />
-              <KpiCard title="Ce mois" amount={totalThisMonth} />
-              <KpiCard title="Ce trimestre" amount={totalThisQuarter} />
-              <KpiCard title="Ce semestre" amount={totalThisSemester} />
-              <KpiCard title="Cette année" amount={totalThisYear} />
-            </div>
-          </div>
-
-          {/* ========================== */}
-          {/* 🔹 Card 2 : Visualisation des données */}
-          {/* ========================== */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-lg p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Visualisation des dépenses
-              </h3>
-              <p className="text-sm text-gray-600">
-                {dateRange.start.toLocaleDateString("fr-FR")} au {dateRange.end.toLocaleDateString("fr-FR")}
-              </p>
-            </div>
-            
-            <div className="space-y-6">
-              {/* Graphique d'évolution */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Évolution temporelle</h4>
-                <ExpensesLineChart 
-                  startDate={dateRange.start} 
-                  endDate={dateRange.end} 
-                  depenses={depenses}
-                />
-              </div>
-              
-              {/* Graphique de répartition */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Répartition par catégorie</h4>
-                <CategoryPieChart 
-                  startDate={dateRange.start} 
-                  endDate={dateRange.end}
-                  depenses={depenses}
-                  categoryLabels={categoryLabels}
-                />
-              </div>
-              
-              {/* Statistiques détaillées */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Statistiques détaillées</h4>
-                <AdvancedStats 
-                  startDate={dateRange.start} 
-                  endDate={dateRange.end}
-                  depenses={depenses}
-                />
-              </div>
-              
-              {/* Liste des catégories */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Détail par catégorie</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(getExpensesByCategory(dateRange.start, dateRange.end).byCategory)
-                    .sort(([, a], [, b]) => b.amount - a.amount)
-                    .map(([category, data]) => (
-                      <div
-                        key={category}
-                        className="bg-gray-50 rounded-lg shadow-sm border border-gray-100 p-4"
-                      >
-                        {/* Nom de la catégorie */}
-                        <h4 className="font-medium text-gray-700 mb-2">
-                          {categoryLabels[category as Depenses["categorie"]] || category}
-                        </h4>
-                        
-                        {/* Montant */}
-                        <p className="text-xl font-bold text-red-600">
-                          {data.amount.toLocaleString("fr-FR")} €
-                        </p>
-                        
-                        {/* Pourcentage */}
-                        <p className="text-sm text-gray-500 mt-1">
-                          {data.percentage.toFixed(1)}% du total
-                        </p>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-  <div className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 mt-6">
-    {/* <div className="flex justify-between items-center mb-4">
-      <h3 className="text-lg font-semibold text-gray-800">
-        Dépenses du {dateRange.start.toLocaleDateString("fr-FR")} au {dateRange.end.toLocaleDateString("fr-FR")}
-      </h3>
-      <div className="text-gray-700">
-        Total : <span className="font-bold text-red-600">{sumInDateRange(depenses, dateRange.start, dateRange.end).toLocaleString("fr-FR")} €</span>
-      </div>
-    </div> */}
-
-    <div className="flex justify-between items-center mb-4">
-      <div className="flex items-center gap-4">
-        <h3 className="text-lg font-semibold text-gray-800">
-        Dépenses du {dateRange.start.toLocaleDateString("fr-FR")} au {dateRange.end.toLocaleDateString("fr-FR")}
-      </h3>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-        >
-          <option value="all">Toutes les catégories</option>
-          {Object.keys(categoryLabels).map((cat) => (
-            <option key={cat} value={cat}>
-              {categoryLabels[cat as keyof typeof categoryLabels]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="text-gray-700">
-        Total filtré : <span className="font-bold text-red-600">
-          {(() => {
-            const dateFiltered = filterExpensesByDateRange(depenses, dateRange.start, dateRange.end);
-            const categoryFiltered = selectedCategory === "all"
-              ? dateFiltered
-              : dateFiltered.filter(d => d.categorie === selectedCategory);
-            return categoryFiltered.reduce((sum, d) => sum + d.montant, 0).toLocaleString("fr-FR");
-          })()} €
-        </span>
-      </div>
-    </div>
-
-    <ul className="space-y-2">
-      {(() => {
-        const filtered = filterExpensesByDateRange(depenses, dateRange.start, dateRange.end)
-          .filter(d => selectedCategory === "all" || d.categorie === selectedCategory)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        if (filtered.length === 0) {
-          return (
-            <p className="text-gray-500 text-center py-4">
-              {selectedCategory === "all" 
-                ? "Aucune dépense pour cette période" 
-                : `Aucune dépense de type "${categoryLabels[selectedCategory as keyof typeof categoryLabels]}" pour cette période`}
-            </p>
-          );
-        }
-
-        return filtered.map((depense) => (
-          <li
-            key={depense._id}
-            className="p-3 bg-gray-50 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center"
-          >
-            <div className="flex flex-col">
-              <span className="text-gray-700">
-                {depense.title ?? categoryLabels[depense.categorie as keyof typeof categoryLabels]}
-              </span>
-              <span className="text-sm text-gray-500">
-                {new Date(depense.createdAt).toLocaleDateString("fr-FR")}
-              </span>
-              <span className="text-sm text-gray-500">
-                {categoryLabels[depense.categorie as keyof typeof categoryLabels]}
-              </span>
-            </div>
-            <span className="font-bold text-red-600">
-              {depense.montant.toLocaleString("fr-FR")} €
+    <div className="p-6 space-y-10">
+      {/* ======================================================= */}
+      {/* 🏷️ En-tête amélioré (UI uniquement) */}
+      {/* ======================================================= */}
+      <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-red-100 rounded-xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6 shadow-sm">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Analyse des Dépenses</h2>
+          <p className="text-sm text-gray-600">
+            Total pour la période :{' '}
+            <span className="font-semibold text-red-600">
+              {(() => {
+                const dateFiltered = filterExpensesByDateRange(depenses, dateRange.start, dateRange.end);
+                const categoryFiltered = selectedCategory === 'all'
+                  ? dateFiltered
+                  : dateFiltered.filter(d => d.categorie === selectedCategory);
+                return categoryFiltered.reduce((sum, d) => sum + d.montant, 0).toLocaleString('fr-FR');
+              })()} €
             </span>
-          </li>
-        ));
-      })()}
-    </ul>
-  </div>
-
-        {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SpecialDateCard date={anchorDate} amount={totalAtSelectedDate} />
-          <button
-            onClick={() => setShowSelectedDateExpenses(!showSelectedDateExpenses)}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {showSelectedDateExpenses ? "Masquer" : "Afficher"} les dépenses
-          </button>
+          </p>
+          <div className="inline-flex items-center gap-2 text-xs text-gray-500 bg-white/70 backdrop-blur px-3 py-1 rounded-full border border-white shadow-sm">
+            <Calendar className="w-4 h-4 text-red-500" />
+            {dateRange.start.toLocaleDateString('fr-FR')} → {dateRange.end.toLocaleDateString('fr-FR')}
+          </div>
         </div>
+        {/* Sélecteurs de dates alignés */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm w-full md:w-auto">
+          <div className="flex flex-col text-xs w-full">
+            <label className="text-gray-500 mb-1">Du</label>
+            <input
+              type="date"
+              value={startOfDay(dateRange.start).toISOString().slice(0, 10)}
+              onChange={(e) => {
+                const parts = e.target.value.split('-').map(Number);
+                if (parts.length === 3) {
+                  const [y, m, d] = parts;
+                  setDateRange(prev => ({ ...prev, start: new Date(y, m - 1, d) }));
+                }
+              }}
+              className="px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white"
+            />
+          </div>
+          <div className="flex flex-col text-xs w-full">
+            <label className="text-gray-500 mb-1">Au</label>
+            <input
+              type="date"
+              value={startOfDay(dateRange.end).toISOString().slice(0, 10)}
+              onChange={(e) => {
+                const parts = e.target.value.split('-').map(Number);
+                if (parts.length === 3) {
+                  const [y, m, d] = parts;
+                  setDateRange(prev => ({ ...prev, end: new Date(y, m - 1, d) }));
+                }
+              }}
+              className="px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white"
+            />
+          </div>
+          <div className="flex flex-col text-xs w-full">
+            <label className="text-gray-500 mb-1">Catégorie</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm bg-white"
+            >
+              <option value="all">Toutes</option>
+              {Object.keys(categoryLabels).map((cat) => (
+                <option key={cat} value={cat}>{categoryLabels[cat as keyof typeof categoryLabels]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
-       
-        {showSelectedDateExpenses && (
-          <div className="mt-6">
-            <h3 className="text-lg font-bold text-gray-900">
-              Dépenses du {anchorDate.toLocaleDateString("fr-FR")}
-            </h3>
-            <ul className="mt-2 space-y-2">
-              {expensesOnSelectedDate.length > 0 ? (
-                expensesOnSelectedDate.map((depense: Depenses) => (
+      {/* ======================================================= */}
+      {/* 📊 KPIs synthétiques */}
+      {/* ======================================================= */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <KpiCard title="Aujourd’hui" amount={totalToday} />
+        <KpiCard title="Cette semaine" amount={totalThisWeek} />
+        <KpiCard title="Ce mois" amount={totalThisMonth} />
+        <KpiCard title="Ce trimestre" amount={totalThisQuarter} />
+        <KpiCard title="Ce semestre" amount={totalThisSemester} />
+        <KpiCard title="Cette année" amount={totalThisYear} />
+      </div>
+
+      {/* ======================================================= */}
+      {/* 🧩 Zone d'analyse : graphiques + stats */}
+      {/* ======================================================= */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+        {/* Colonne 1 : Ligne + stats */}
+        <div className="space-y-8 xl:col-span-2">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-gray-800">Évolution temporelle</h3>
+              <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 font-medium">
+                {dateRange.start.toLocaleDateString('fr-FR')} → {dateRange.end.toLocaleDateString('fr-FR')}
+              </span>
+            </div>
+            <ExpensesLineChart startDate={dateRange.start} endDate={dateRange.end} depenses={depenses} />
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="text-base font-semibold text-gray-800 mb-4">Statistiques détaillées</h3>
+            <AdvancedStats startDate={dateRange.start} endDate={dateRange.end} depenses={depenses} />
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="text-base font-semibold text-gray-800 mb-4">Détail par catégorie</h3>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(getExpensesByCategory(dateRange.start, dateRange.end).byCategory)
+                .sort(([, a], [, b]) => b.amount - a.amount)
+                .map(([category, data]) => (
+                  <div
+                    key={category}
+                    className="relative overflow-hidden group rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-5 bg-gradient-to-br from-red-500 to-orange-400 transition-opacity" />
+                    <h4 className="font-medium text-gray-700 mb-1 flex items-center gap-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                      {categoryLabels[category as Depenses['categorie']] || category}
+                    </h4>
+                    <p className="text-lg font-bold text-gray-900">{data.amount.toLocaleString('fr-FR')} €</p>
+                    <p className="text-xs text-gray-500 mt-1">{data.percentage.toFixed(1)}% du total</p>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+        {/* Colonne 2 : Pie chart */}
+        <div className="space-y-8">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="text-base font-semibold text-gray-800 mb-4">Répartition par catégorie</h3>
+            <CategoryPieChart startDate={dateRange.start} endDate={dateRange.end} depenses={depenses} categoryLabels={categoryLabels} />
+          </div>
+          {/* Liste filtrée (dépenses individuelles) */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-gray-800">Dépenses listées</h3>
+              <div className="text-xs text-gray-500">
+                Total filtré :{' '}
+                <span className="font-semibold text-red-600">
+                  {(() => {
+                    const dateFiltered = filterExpensesByDateRange(depenses, dateRange.start, dateRange.end);
+                    const categoryFiltered = selectedCategory === 'all'
+                      ? dateFiltered
+                      : dateFiltered.filter(d => d.categorie === selectedCategory);
+                    return categoryFiltered.reduce((sum, d) => sum + d.montant, 0).toLocaleString('fr-FR');
+                  })()} €
+                </span>
+              </div>
+            </div>
+            <ul className="divide-y divide-gray-100 max-h-[420px] overflow-auto pr-1 custom-scrollbar">
+              {(() => {
+                const filtered = filterExpensesByDateRange(depenses, dateRange.start, dateRange.end)
+                  .filter(d => selectedCategory === 'all' || d.categorie === selectedCategory)
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                if (filtered.length === 0) {
+                  return (
+                    <li className="py-6 text-center text-sm text-gray-500">
+                      {selectedCategory === 'all'
+                        ? 'Aucune dépense pour cette période'
+                        : `Aucune dépense de type "${categoryLabels[selectedCategory as keyof typeof categoryLabels]}" pour cette période`}
+                    </li>
+                  );
+                }
+
+                return filtered.map((depense) => (
                   <li
                     key={depense._id}
-                    className="p-3 bg-white rounded-lg shadow-sm border border-gray-200 flex justify-between"
+                    className="group flex items-center justify-between gap-4 py-3 px-2 rounded-md hover:bg-gray-50 transition-colors"
                   >
-                    <span className="text-gray-700">{depense.title ?? depense.categorie}</span>
-                    <span className="font-bold text-red-600">
-                      {depense.montant.toLocaleString("fr-FR")} €
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                        {depense.title ?? categoryLabels[depense.categorie as keyof typeof categoryLabels]}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(depense.createdAt).toLocaleDateString('fr-FR')}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {categoryLabels[depense.categorie as keyof typeof categoryLabels]}
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold text-red-600">
+                      {depense.montant.toLocaleString('fr-FR')} €
                     </span>
                   </li>
-                ))
-              ) : (
-                <p className="text-gray-500">Aucune dépense pour cette date</p>
-              )}
+                ));
+              })()}
             </ul>
           </div>
-        )} */}
-
-       
+        </div>
       </div>
+
     </div>
   );
 };
