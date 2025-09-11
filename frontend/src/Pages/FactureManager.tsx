@@ -21,6 +21,7 @@ const FactureManager: React.FC = () => {
   const createFacture = useCreateFacture();
   const updateFacture = useUpdateFacture();
   const [showForm, setShowForm] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<Facture["status"] | null>(null);
 
 
     // const onAddFacture = (newFacture: Omit<Facture, "id" | "user" | "createdAt">) => {
@@ -107,6 +108,10 @@ const FactureManager: React.FC = () => {
   const totalPending = factures.filter((b: Facture) => b.status === 'En_attente').reduce((sum: number, b: Facture) => sum + b.montant, 0);
   const totalOverdue = factures.filter((b: Facture) => b.status === 'En_retard').reduce((sum: number, b: Facture) => sum + b.montant, 0);
 
+   // 👉 Appliquer le filtre selon selectedStatus
+  const filteredFactures = selectedStatus
+  ? factures.filter((b: Facture) => b.status === selectedStatus)
+  : factures;
   // Fonction pour mettre à jour le statut d'une facture
   // const onUpdateBillStatus = (id: string, newStatus: "Payée" | "En_attente" | "En_retard"): void => {
   //   setFactures(prev => prev.map((facture: Facture) => 
@@ -137,6 +142,7 @@ const FactureManager: React.FC = () => {
         </div>
       </div>
       <button
+      
         onClick={() => setShowForm(!showForm)}
         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
       >
@@ -151,7 +157,13 @@ const FactureManager: React.FC = () => {
         const statusBills = factures.filter((b: Facture) => b.status === status);
         const total = statusBills.reduce((sum: number, b: Facture) => sum + b.montant, 0);
         return (
-          <div key={status} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div key={status} 
+                        // 👉 Quand on clique : on sélectionne ce statut
+          onClick={() => setSelectedStatus(status)} 
+          className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition 
+              ${selectedStatus === status ? "ring-2 ring-blue-500" : ""}`}>
+
+            {/* className="bg-white rounded-xl shadow-sm border border-gray-100 p-4" */}
             <div className="flex items-center gap-3">
               {getStatusIcon(status)}
               <div>
@@ -166,6 +178,16 @@ const FactureManager: React.FC = () => {
         );
       })}
     </div>
+
+     {/* Bouton pour réinitialiser le filtre */}
+      {selectedStatus && (
+        <button
+          onClick={() => setSelectedStatus(null)}
+          className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg text-sm"
+        >
+          Tout afficher
+        </button>
+      )}
 
     {/* FORMULAIRE */}
     {showForm && (
@@ -308,7 +330,7 @@ const FactureManager: React.FC = () => {
             <p className="text-sm">Commencez par ajouter vos factures</p>
           </div>
         ) : (
-          factures
+          filteredFactures
             .sort(
               (a: Facture, b: Facture) =>
                 new Date(b.createdAt).getTime() -
