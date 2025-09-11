@@ -1,11 +1,21 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
+// Interface TypeScript alignée avec l'enum du schéma (accents inclus)
 export interface IEpargne extends Document {
   name: string;
   targetAmount: number;
   currentAmount: number;
   targetDate: Date;
-  category: "Hopital" | "Vacances" | "Maison" | "Voiture" | "Éducation" | "Retraite" | "General" | string;
+  category:
+    | "Urgence"
+    | "Hopital"
+    | "Vacances"
+    | "Maison"
+    | "Voiture"
+    | "Éducation"
+    | "Retraite"
+    | "Général"
+    | "Autre";
   user: mongoose.Types.ObjectId; // lien avec l'utilisateur
 }
 

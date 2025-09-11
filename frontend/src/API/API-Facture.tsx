@@ -1,7 +1,8 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export interface FactureFormData  {
-  categorie: "Telephone" | "Internet" | "Electricité" | "Gaz" | "Eau" | "Autre";
+    // Catégories alignées avec le backend (accents + Canal +)
+    categorie: "Téléphone" | "Internet" | "Électricité" | "Gaz" | "Eau" | "Canal +" | "Autre";
   title: string;
   montant: number;
   dateEcheance: Date;

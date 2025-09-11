@@ -4,5 +4,16 @@ export interface Epargne {
   targetAmount: number;
   currentAmount: number;
   targetDate: string;
-  category: 'Hopital' | 'Vacances' | 'Maison' | 'Voiture' | 'Éducation' | 'Retraite' | 'General' | string;
+  // Aligné avec le backend: inclut "Urgence", accents corrigés, et "Général"
+  category:
+    | 'Urgence'
+    | 'Hopital'
+    | 'Vacances'
+    | 'Maison'
+    | 'Voiture'
+    | 'Éducation'
+    | 'Retraite'
+    | 'Général'
+    | 'Autre'
+    | string;
 }

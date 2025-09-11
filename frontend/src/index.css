@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+/* Animation douce pour mettre en évidence les factures en retard */
+@keyframes blink-bg {
+	0%, 100% { background-color: #dd8888; } /* rouge très clair */
+	50%      { background-color: #ffffff; }  /* blanc */
+}
+
+/* Classe utilitaire appliquée aux lignes des factures en retard */
+.blink-overdue {
+	animation: blink-bg 1.2s linear infinite;
+}
+
+/* Respecte l'accessibilité: désactive l'animation si l'utilisateur préfère réduire les mouvements */
+@media (prefers-reduced-motion: reduce) {
+	.blink-overdue {
+		animation: none;
+	}
+}

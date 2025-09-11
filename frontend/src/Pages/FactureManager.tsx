@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Facture } from "../Types/facture";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { AlertTriangle, Calendar, CheckCircle, Clock, CreditCard, Plus, Tag } from "lucide-react";
 import { useCreateFacture, useGetFactures, useUpdateFacture,  } from "../Hooks/useFacture";
@@ -22,6 +22,27 @@ const FactureManager: React.FC = () => {
   const updateFacture = useUpdateFacture();
   const [showForm, setShowForm] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<Facture["status"] | null>(null);
+
+  // Auto-mark overdue factures as "En_retard" if due date is past and not already paid
+  useEffect(() => {
+    if (!factures || factures.length === 0) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const toMarkOverdue = factures.filter((f: Facture) => {
+      // Avoid touching paid or already overdue
+      if (f.status === "Payée" || f.status === "En_retard") return false;
+      const due = new Date(f.dateEcheance);
+      // If parsing failed, skip
+      if (isNaN(due.getTime())) return false;
+      // Mark if due date strictly before today
+      return due < today;
+    });
+
+    if (toMarkOverdue.length === 0) return;
+  toMarkOverdue.forEach((f: Facture) => {
+      updateFacture.mutate({ factureId: f._id, updateData: { status: "En_retard" } });
+    });
+  }, [factures, updateFacture]);
 
 
     // const onAddFacture = (newFacture: Omit<Facture, "id" | "user" | "createdAt">) => {
@@ -69,14 +90,16 @@ const FactureManager: React.FC = () => {
     // };
     
 
-    const categoryLabels: Record<Facture["categorie"], string> = {
-        Telephone: "Téléphone",
-        Internet: "Internet",
-        Electricité: "Électricité",
-        Gaz: "Gaz",
-        Eau: "Eau",
-        Autre: "Autre",
-    };
+  // Libellés des catégories (clés alignées avec le type Facture["categorie"]) 
+  const categoryLabels: Record<Facture["categorie"], string> = {
+    "Téléphone": "Téléphone",
+    "Internet": "Internet",
+    "Électricité": "Électricité",
+    "Gaz": "Gaz",
+    "Eau": "Eau",
+    "Canal +": "Canal +",
+    "Autre": "Autre",
+  };
     const statusLabels: Record<Facture["status"], string> = {
         "En_attente": "En attente",
         "Payée": "Payée",
@@ -340,8 +363,9 @@ const FactureManager: React.FC = () => {
             .map((facture: Facture) => (
               <div
                 key={facture._id}
-                className="p-6 hover:bg-gray-50 transition-colors"
+                className={`p-6 transition-colors ${facture.status === "En_retard" ? "blink-overdue" : "hover:bg-gray-50"}`}
               >
+                {/* Si la facture est en retard, on applique une classe qui fait clignoter légèrement le fond */}
                 <div className="flex items-center justify-between">
                   {/* Gauche */}
                   <div className="flex items-center gap-4">
@@ -379,6 +403,7 @@ const FactureManager: React.FC = () => {
                       <p className="text-lg font-bold text-gray-900">
                         {facture.montant.toLocaleString("fr-FR")} €
                       </p>
+                      {/* Badge de statut avec code couleur */}
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs border ${getStatusColor(
                           facture.status
@@ -388,6 +413,7 @@ const FactureManager: React.FC = () => {
                       </span>
                     </div>
 
+                    {/* Actions rapides pour changer le statut */}
                     {facture.status !== "Payée" && (
                       <div className="flex gap-2">
                         <button

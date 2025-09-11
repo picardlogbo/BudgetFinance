@@ -21,6 +21,8 @@ import RevenuRoutes from "./routes/revenuRoute.js";
 import BudgetRoutes from "./routes/BudgetRoute.js";
 import FactureRoutes from "./routes/factureRoute.js";
 import EpargneRoutes from "./routes/epargneRoutes.js";
+import Facture from "./models/factureModel.js"; // utilisé ailleurs éventuellement
+import { scheduleOverdueFacturesJob } from "./jobs/overdueFacturesCron.js"; // cron factures
 
 // Notre fonction de connexion à MongoDB
 
@@ -80,3 +82,9 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => console.log(`✅ Serveur lancé sur  http://localhost:${PORT}`));
 // Démarrage du serveur
+
+// =======================
+// Planification des tâches (node-cron)
+// =======================
+// Job: passage des factures en "En_retard" chaque nuit (0 0 * * *)
+scheduleOverdueFacturesJob();
