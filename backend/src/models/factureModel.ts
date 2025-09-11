@@ -1,35 +1,70 @@
-import { model, Schema } from "mongoose";
+import { model, Schema, Document, Types } from "mongoose";
 
+// =============================
 // Modèle Facture (backend)
-// Catégories alignées avec le frontend, avec accents corrects
-export interface Facture {
-    _id: string;
+// =============================
+// Améliorations apportées :
+// - paidAt : date effective de paiement (analytics / audit)
+// - statusHistory : trace des changements de statut
+// - index (status + dateEcheance) pour cron + filtrage
+// - hooks pré-update pour enrichir automatiquement paidAt & statusHistory
+
+export interface IFacture extends Document {
     title: string;
     dateEcheance: Date;
     montant: number;
-    // Inclus: "Canal +" (demande utilisateur), "Gaz" et accents
     categorie: "Électricité" | "Téléphone" | "Internet" | "Eau" | "Gaz" | "Canal +" | "Autre";
-    user: Schema.Types.ObjectId; // Référence à l'utilisateur
-    createdAt: Date; // Auto généré
+    user: Types.ObjectId;
     status: 'En_attente' | 'En_retard' | 'Payée';
     recurrent: boolean;
-    isActive?: true;
+    isActive: boolean;
+    paidAt?: Date | null;               // Renseigné quand statut devient Payée
+    statusHistory: Array<{
+        from?: string;                     // Ancien statut (optionnel si initial)
+        to: string;                        // Nouveau statut
+        changedAt: Date;                   // Horodatage du changement
+    }>;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-export const FactureSchema = new Schema<Facture>({
-    title: { type: String, required: true },
-    dateEcheance: { type: Date, default: Date.now },
-    montant: { type: Number, required: true },
-    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    createdAt: { type: Date, default: Date.now },
-    // Catégories autorisées (avec accents) – inclus "Gaz" et "Canal +"
+export const FactureSchema = new Schema<IFacture>({
+    title: { type: String, required: true, trim: true },
+    dateEcheance: { type: Date, required: true },
+    montant: { type: Number, required: true, min: 0 },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     categorie: { type: String, enum: ["Électricité", "Téléphone", "Internet", "Eau", "Gaz", "Canal +", "Autre"], required: true },
-    status: { type: String, enum: ['En_attente', 'En_retard', 'Payée'], default: 'En_attente' },
+    status: { type: String, enum: ['En_attente', 'En_retard', 'Payée'], default: 'En_attente', index: true },
     recurrent: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    paidAt: { type: Date, default: null },
+    statusHistory: [{
+        from: { type: String },
+        to: { type: String, required: true },
+        changedAt: { type: Date, default: Date.now }
+    }]
 }, { timestamps: true });
 
-const Facture = model<Facture>("Facture", FactureSchema);
-// Index pour accélérer les requêtes du cron (filtre sur status + dateEcheance)
+// Index combiné utilisé par la tâche cron et les filtres UI
 FactureSchema.index({ status: 1, dateEcheance: 1 });
+
+// Hook : enregistrement des changements de statut & paidAt automatique
+FactureSchema.pre('findOneAndUpdate', function (next) {
+    const update: any = this.getUpdate();
+    if (!update) return next();
+    const newStatus = update.$set?.status;
+    if (newStatus) {
+        // Ajout historique du statut
+        const historyEntry = { to: newStatus, changedAt: new Date() };
+        if (!update.$push) update.$push = {};
+        if (!update.$push.statusHistory) update.$push.statusHistory = historyEntry;
+        // Si Payée et paidAt absent → on fixe paidAt
+        if (newStatus === 'Payée' && !update.$set.paidAt) {
+            update.$set.paidAt = new Date();
+        }
+    }
+    next();
+});
+
+const Facture = model<IFacture>('Facture', FactureSchema);
 export default Facture;
