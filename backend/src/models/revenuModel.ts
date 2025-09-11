@@ -10,6 +10,7 @@ export interface revenu {
     user : Schema.Types.ObjectId;// Référence à l'utilisateur
     createdAt: Date;// Auto généré
     isActive?: true; 
+    isArchived?: false;
 }
 
 const RevenuSchema = new Schema<revenu>({
@@ -20,8 +21,9 @@ const RevenuSchema = new Schema<revenu>({
     title: { type: String, required: true },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     createdAt: { type: Date, default: Date.now },
-    isActive: { type: Boolean, default: true }
-}, 
+    isActive: { type: Boolean, default: true },
+    isArchived: { type: Boolean, default: false },
+},
     { timestamps: true }
 );
 

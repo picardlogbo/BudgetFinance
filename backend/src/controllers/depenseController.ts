@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import e, { Request, Response } from "express";
 import Budget from "../models/BudgetModel.js";
 import { Types } from "mongoose";
 import Depense from "../models/depensesModel.js";
@@ -279,4 +279,99 @@ export const deleteDepense = async (req: Request, res: Response) => {
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la suppression de la dépense", error });
     }
+};
+
+export const getArchivedDepenses = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
+
+        const archivedDepenses = await Depense.find({ user, isArchived: true });
+        res.status(200).json(archivedDepenses);
+    } catch (error) {
+        console.error("Erreur lors de la récupération des dépenses archivées :", error);
+        res.status(500).json({ message: "Erreur lors de la récupération des dépenses archivées" });
+    }
+};
+
+export const ArchiveDepense = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
+        const depense = (req as any).document;
+        if (!depense) {
+            return res.status(404).json({ message: "Dépense non trouvée" });
+        }
+        depense.isArchived = true;
+        await depense.save();
+        res.status(200).json({message: "Dépense archivée avec succès", depense});
+    } catch (error) {
+        console.error("Erreur lors de l'archivage de la dépense :", error);
+        res.status(500).json({ message: "Erreur lors de l'archivage de la dépense" });
+    }
+};
+
+export const UnarchiveDepense = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const password = req.body.password;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
+        const depense = (req as any).document;
+        if (!depense) {
+            return res.status(404).json({ message: "Dépense non trouvée" });
+        }
+        const isPasswordValid = await user.comparePassword(password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Mot de passe incorrect" });
+        }
+        depense.isArchived = false;
+        await depense.save();
+        res.status(200).json({message: "Dépense désarchivée avec succès", depense});
+    } catch (error) {
+        console.error("Erreur lors de la désarchivage de la dépense :", error);
+        res.status(500).json({ message: "Erreur lors de la désarchivage de la dépense" });
+    }
+};
+
+export const unarchiveAllDepenses = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;  
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
+        const result = await Depense.updateMany(
+            { user, isArchived: true },
+            { $set: { isArchived: false } }
+        );
+        res.status(200).json({ message: `${result.modifiedCount} dépenses désarchivées avec succès` });
+    } catch (error) {
+        console.error("Erreur lors de la désarchivage des dépenses :", error);
+        res.status(500).json({ message: "Erreur lors de la désarchivage des dépenses" });
+    }
+};
+
+export const getDepensesByCategory = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
+            const depenses = await Depense.aggregate([
+                { $match: { user: (user as any)._id, isArchived: false } },
+                { $group: { _id: "$categorie", totalMontant: { $sum: "$montant" }, count: { $sum: 1 } } },
+                { $project: { categorie: "$_id", totalMontant: 1, count: 1, _id: 0 } },
+            ]);
+            res.status(200).json(depenses);
+        } catch (error) {
+            res.status(500).json({ message: "Erreur lors de la récupération des dépenses par catégorie", error });
+            console.error("Erreur lors de la récupération des dépenses par catégorie :", error);
+        }
 };

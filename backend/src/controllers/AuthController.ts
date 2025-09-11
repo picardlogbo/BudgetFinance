@@ -64,6 +64,7 @@ export const Register = async (req: Request, res: Response) => {
     }
 };
 
+// Note: Pour la gestion des mots de passe (changement, réinitialisation), il est recommandé d'implémenter des fonctionnalités supplémentaires avec des validations appropriées.
 export const Login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
@@ -127,5 +128,146 @@ export const ValidateToken = async (req: Request, res: Response) => {
         return res.status(401).json({ valid: false, message: 'Token invalide' });
     }
 };
+export const Logout = async (req: Request, res: Response) => {
+    try {
+        res.clearCookie('token', {
+            httpOnly: process.env.JWT_COOKIE_HTTP_ONLY !== 'false',
+            secure: (process.env.JWT_COOKIE_SECURE_IN_PROD === 'true' && process.env.NODE_ENV === 'production')
+                || process.env.JWT_COOKIE_SECURE === 'true',
+            sameSite: (process.env.JWT_COOKIE_SAME_SITE as any) || 'lax',
+            path: '/',
+        });
+        res.status(200).json({ message: "Déconnexion réussie" });
+    } catch (error) {
+        console.error("Erreur lors de la déconnexion :", error);
+        res.status(500).json({ message: "Erreur lors de la déconnexion" });
+    }
+};
 
+export const GetProfile = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
 
+        res.status(200).json(user);
+    } catch (error) {
+        console.error("Erreur lors de la récupération du profil :", error);
+        res.status(500).json({ message: "Erreur lors de la récupération du profil" });
+    }
+};
+
+// export const UpdateProfile = async (req: Request, res: Response) => {
+//     try {
+//         const user = req.user;
+//         if (!user) {
+//             return res.status(401).json({ message: "Non Autorisé" });
+//         }
+
+//         // Mettre à jour les informations du profil
+//         const { firstName, lastName, email, phone } = req.body;
+//         user.firstName = firstName || user.firstName;
+//         user.lastName = lastName || user.lastName;
+//         user.email = email || user.email;
+//         user.phone = phone || user.phone;
+
+//         await user.save();
+//         res.status(200).json({ message: "Profil mis à jour avec succès", user });
+//     } catch (error) {
+//         console.error("Erreur lors de la mise à jour du profil :", error);
+//         res.status(500).json({ message: "Erreur lors de la mise à jour du profil" });
+//     }
+// };
+// Note: Pour la gestion des mots de passe (changement, réinitialisation), il est recommandé d'implémenter des fonctionnalités supplémentaires avec des validations appropriées.
+
+//  export const ChangePassword = async (req: Request, res: Response) => {
+//     try {
+//         const user = req.user;
+//         if (!user) {
+//             return res.status(401).json({ message: "Non Autorisé" });
+//         }
+//         const { currentPassword, newPassword, confirmNewPassword } = req.body;
+//         if (!currentPassword || !newPassword || !confirmNewPassword) {
+//             return res.status(400).json({ message: "Champs requis manquants" });
+//         }
+//         if (newPassword !== confirmNewPassword) {
+//             return res.status(400).json({ message: "Les nouveaux mots de passe ne correspondent pas" });
+//         }
+//         const isMatch = await user.comparePassword(currentPassword);
+//         if (!isMatch) {
+//             return res.status(401).json({ message: "Mot de passe actuel incorrect" });
+//         }
+//         user.password = newPassword;
+//         await user.save();
+//         res.status(200).json({ message: "Mot de passe changé avec succès" });
+//     } catch (error) {
+//         console.error("Erreur lors du changement de mot de passe :", error);
+//         res.status(500).json({ message: "Erreur lors du changement de mot de passe" });
+//     }
+// };
+
+// Pour la réinitialisation du mot de passe, il est recommandé d'implémenter une fonctionnalité avec envoi d'email et token sécurisé.
+
+     export const ResetPassword = async (req: Request, res: Response) => {
+    try {
+        const { email, newPassword, confirmNewPassword } = req.body;
+        if (!email || !newPassword || !confirmNewPassword) {
+            return res.status(400).json({ message: "Champs requis manquants" });
+        }
+        if (newPassword !== confirmNewPassword) {
+            return res.status(400).json({ message: "Les nouveaux mots de passe ne correspondent pas" });
+        }
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+        user.password = newPassword;
+        await user.save();
+        res.status(200).json({ message: "Mot de passe réinitialisé avec succès" });
+    } catch (error) {
+        console.error("Erreur lors de la réinitialisation du mot de passe :", error);
+        res.status(500).json({ message: "Erreur lors de la réinitialisation du mot de passe" });
+    }
+};
+
+// Note: Pour la réinitialisation du mot de passe, il est fortement recommandé d'implémenter une fonctionnalité avec envoi d'email et token sécurisé.
+// Ceci est une version simplifiée sans sécurité avancée.
+
+export const EmailVerification = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.body;
+        // Vérifier le token et activer l'utilisateur
+        if (!token) {
+            return res.status(400).json({ message: "Token manquant" });
+        }
+        const secret = process.env.EMAIL_VERIFICATION_SECRET;
+        if (!secret) {
+            return res.status(500).json({ message: "Configuration serveur manquante" });
+        }
+        let decoded: any;
+        try {
+            decoded = jwt.verify(token, secret);
+        } catch (err) {
+            return res.status(400).json({ message: "Token invalide ou expiré" });
+        }
+        const userId = decoded?.id || decoded?._id || decoded?.sub;
+        if (!userId) return res.status(400).json({ message: "Token invalide" });
+        const user = await UserModel.findById(userId);
+        if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+        if (user.isVerified) {
+            return res.status(400).json({ message: "Email déjà vérifié" });
+        }
+        user.isVerified = true;
+        await user.save();
+        res.status(200).json({ message: "Email vérifié avec succès" });
+    } catch (error) {
+        console.error("Erreur lors de la vérification de l'email :", error);
+        res.status(500).json({ message: "Erreur lors de la vérification de l'email" });
+    }
+};
+
+export const verifyOtp = (otp: string, userOtp: string) => {
+    return otp === userOtp;
+
+}

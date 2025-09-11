@@ -29,6 +29,7 @@ export interface Depense {
   title: string;
   date: Date;
   isActive: boolean;
+  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +57,7 @@ const DepenseSchema = new Schema<Depense>(
     title: { type: String  , required: true },
     date: { type: Date, default: Date.now }, // date de la dépense
     isActive: { type: Boolean, default: true },
+    isArchived: { type: Boolean, default: false },
   },
   {
     timestamps: true, // ajoute createdAt et updatedAt

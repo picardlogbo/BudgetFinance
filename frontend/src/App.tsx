@@ -11,6 +11,7 @@ import FactureManager from './Pages/FactureManager';
 import BudgetPage from './Pages/BudgetPage';
 import EpargneManager from './Pages/EpargneManager';
 import { Dashboard } from './Pages/Dashboard';
+import { AnalyseDepense } from './Components/Depenses/AnalyseDepense';
 
 function App() {
 
@@ -27,6 +28,8 @@ function App() {
        <Route path="/factures" element={<FactureManager />} />
        <Route path="/budgets" element={<BudgetPage />} />
        <Route path="/epargne" element={<EpargneManager />} />
+       <Route path="/analyse-depenses" element={<AnalyseDepense />} />
+        {/* <Route path="*" element={<NotFound />} /> */}
      </Routes>
     </>
   )
