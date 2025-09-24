@@ -4,11 +4,13 @@ import { Calendar, CreditCard, Plus, Tag } from "lucide-react";
 import type { Revenu } from "../Types/revenus";
 import type { RevenuFormData } from "../API/API-Revenu";
 import { useCreateRevenu, useGetRevenus } from "../Hooks/useRevenu";
+import { useNavigate } from "react-router-dom";
 
 
 
 const RevenuManager: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
+  const navigate = useNavigate();
 
     const { data: revenus = [] } = useGetRevenus();
     const createRevenu = useCreateRevenu();
@@ -104,6 +106,16 @@ const totalMonthlyRevenue = revenusCeMois.reduce(
             </span>
           </p>
         </div>
+
+        <div className="flex gap-3">
+          <button
+          onClick={() => navigate("/analyse-revenus")}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Analyse des Revenus
+        </button>
+
         <button
           onClick={() => setShowForm(!showForm)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -111,6 +123,8 @@ const totalMonthlyRevenue = revenusCeMois.reduce(
           <Plus className="w-4 h-4" />
           Ajouter un Revenu
         </button>
+        </div>
+        
       </div>
 
       {/* RÉSUMÉ PAR CATÉGORIE */}

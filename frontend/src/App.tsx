@@ -13,6 +13,8 @@ import EpargneManager from './Pages/EpargneManager';
 import { Dashboard } from './Pages/Dashboard';
 import AnalyseFacture from './Pages/AnalyseFacture';
 import { AnalyseDepense } from './Components/Depenses/AnalyseDepense';
+import DepensesArchiveesSecure from './Pages/DepensesArchiveesSecure';
+import { AnalyseRevenu } from './Pages/RevenuAnalyse';
 
 function App() {
 
@@ -31,6 +33,8 @@ function App() {
        <Route path="/budgets" element={<BudgetPage />} />
        <Route path="/epargne" element={<EpargneManager />} />
        <Route path="/analyse-depenses" element={<AnalyseDepense />} />
+       <Route path="/analyse-revenus" element={<AnalyseRevenu />} />
+  <Route path="/depenses/archivees-secure" element={<DepensesArchiveesSecure />} />
         {/* <Route path="*" element={<NotFound />} /> */}
      </Routes>
     </>

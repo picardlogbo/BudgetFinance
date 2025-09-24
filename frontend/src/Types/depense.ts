@@ -14,5 +14,6 @@ export interface Depenses {
     user: string;                  // ID de l'utilisateur propriétaire (référence)
     createdAt: Date;               // Date de création (auto-générée par MongoDB)
     isActive: boolean;             // Statut actif/inactif de la dépense
+    isArchived?: boolean;          // Archivage
 }
 

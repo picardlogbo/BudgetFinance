@@ -82,6 +82,11 @@ import Depense from "../models/depensesModel.js";
 
 
 
+// Création d'une dépense
+// Règles métier importantes:
+// - Un budget mensuel (clé: user+categorie+mois+annee) est créé automatiquement s'il n'existe pas (upsert)
+// - Le montant de la dépense est toujours comptabilisé dans budget.montantDepense du mois concerné
+// - Même si la dépense est ensuite archivée, elle CONTINUE de compter dans le budget (on n'ajuste pas le total)
 export const CreateDepense = async (req: Request, res: Response) => {
   try {
     // 1. Auth
@@ -148,7 +153,9 @@ export const CreateDepense = async (req: Request, res: Response) => {
     }
 
     // 3. Date + période
-    const depenseDate = new Date();
+    // On respecte une date fournie par le client (req.body.date) si elle existe, sinon on utilise 'maintenant'.
+    const providedDate = (req.body as any).date ? new Date((req.body as any).date) : null;
+    const depenseDate = providedDate && !Number.isNaN(providedDate.getTime()) ? providedDate : new Date();
     const mois = depenseDate.getMonth() + 1; // 1..12
     const annee = depenseDate.getFullYear();
 
@@ -161,20 +168,21 @@ export const CreateDepense = async (req: Request, res: Response) => {
       title,
     });
 
-    // 5. Chercher un budget existant correspondant
-    const budget = await Budget.findOne({
-      user: userId,
-      categorie: matchedCategorie,
-      mois,
-      annee,
-      isActive: true,
-    });
-
-    if (budget) {
-      depense.budget = budget._id as Types.ObjectId;
-      budget.montantDepense += montant as number;
-      await budget.save();
-    }
+        // 5. Comptabilisation budget (UPsert)
+        // Au lieu de seulement incrémenter si un budget existe, on upsert systématiquement
+        // la ligne budget pour la clé (user+categorie+mois+annee). Ainsi, le budget est créé au besoin.
+        const upsertResult = await Budget.updateOne(
+            { user: userId, categorie: matchedCategorie, mois, annee },
+            {
+                // initialise si insertion
+                $setOnInsert: { montantAlloue: 0, isActive: true },
+                // incrémente le total dépensé
+                $inc: { montantDepense: Number(montant) },
+            },
+            { upsert: true }
+        );
+        // Si un budget existait déjà, on pourrait retrouver son _id pour le lier à la dépense.
+        // Ici on laisse 'depense.budget' vide si on ne le récupère pas, car non strictement nécessaire au calcul.
 
     // 6. Sauvegarde dépense
     await depense.save();
@@ -202,12 +210,19 @@ export const getDepenses = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Non Autorisé" });
         }
 
-
-            const depenses = await Depense.find({ user });
-            res.status(200).json(depenses);
-        } catch (error) {
-            res.status(500).json({ message: "Erreur lors de la récupération des dépenses", error });
+        // ?includeArchived=1 pour inclure les archivées
+        const includeArchived = req.query.includeArchived === '1' || req.query.includeArchived === 'true';
+        const filter: any = { user };
+        if (!includeArchived) {
+            // Exclure celles marquées archivées (et celles où isArchived true). Celles sans champ restent visibles.
+            filter.isArchived = { $ne: true };
         }
+
+        const depenses = await Depense.find(filter).sort({ createdAt: -1 });
+        res.status(200).json(depenses);
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération des dépenses", error });
+    }
 };
 
 export const getDepenseById = async (req: Request, res: Response) => {
@@ -296,6 +311,27 @@ export const getArchivedDepenses = async (req: Request, res: Response) => {
     }
 };
 
+export const getArchivedDepensesSecure = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Non Autorisé" });
+        }
+        const { password } = req.body as { password?: string };
+        if (!password) return res.status(400).json({ message: 'Mot de passe requis' });
+        const ok = await (user as any).comparePassword(password);
+        if (!ok) return res.status(401).json({ message: 'Mot de passe incorrect' });
+        const archivedDepenses = await Depense.find({ user, isArchived: true }).sort({ createdAt: -1 });
+        res.status(200).json(archivedDepenses);
+    } catch (error) {
+        console.error('Erreur récupération archivées sécurisées :', error);
+        res.status(500).json({ message: "Erreur lors de la récupération des dépenses archivées" });
+    }
+};
+
+// Archivage d'une dépense
+// Règle: les dépenses ARCHIVÉES doivent continuer à compter dans le budget du mois.
+// → On NE MODIFIE PAS le budget.montantDepense quand on archive.
 export const ArchiveDepense = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -307,15 +343,19 @@ export const ArchiveDepense = async (req: Request, res: Response) => {
         if (!depense) {
             return res.status(404).json({ message: "Dépense non trouvée" });
         }
-        depense.isArchived = true;
-        await depense.save();
-        res.status(200).json({message: "Dépense archivée avec succès", depense});
+    depense.isArchived = true;
+    await depense.save();
+    // Pas d'impact sur budget.montantDepense: on conserve le montant dans le total du mois
+    res.status(200).json({message: "Dépense archivée avec succès", depense});
     } catch (error) {
         console.error("Erreur lors de l'archivage de la dépense :", error);
         res.status(500).json({ message: "Erreur lors de l'archivage de la dépense" });
     }
 };
 
+// Désarchiver une dépense
+// Règle: idem, la dépense doit toujours compter dans le budget mensuel.
+// → On NE MODIFIE PAS le budget.montantDepense quand on désarchive.
 export const UnarchiveDepense = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -332,9 +372,10 @@ export const UnarchiveDepense = async (req: Request, res: Response) => {
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Mot de passe incorrect" });
         }
-        depense.isArchived = false;
-        await depense.save();
-        res.status(200).json({message: "Dépense désarchivée avec succès", depense});
+    depense.isArchived = false;
+    await depense.save();
+    // Pas d'impact sur budget.montantDepense
+    res.status(200).json({message: "Dépense désarchivée avec succès", depense});
     } catch (error) {
         console.error("Erreur lors de la désarchivage de la dépense :", error);
         res.status(500).json({ message: "Erreur lors de la désarchivage de la dépense" });

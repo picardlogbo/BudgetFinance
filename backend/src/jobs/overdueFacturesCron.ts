@@ -27,7 +27,9 @@ async function markOverdueFactures() {
   let error: any = null;
 
   try {
+    // Filtre pour les factures en attente et échues
     const filter = { status: 'En_attente', dateEcheance: { $lt: today } } as const;
+    // Comptage des factures correspondantes
     matched = await Facture.countDocuments(filter);
     if (matched === 0) {
       console.log('[#CRON][Factures][OVERDUE] Aucune facture à mettre En_retard.');
@@ -89,9 +91,9 @@ async function remindUpcomingFactures() {
 export function scheduleOverdueFacturesJob() {
   console.log('[#CRON] Planification jobs factures (0 0 * * *)');
   // Overdue @ 00:00
-  cron.schedule('0 0 * * *', () => { void markOverdueFactures(); }, { timezone: 'Europe/Paris' });
+  cron.schedule('0 0 * * *', () => { void markOverdueFactures(); }, { timezone: 'Africa/Abidjan' });
   // Reminder J-1 @ 08:00 (exemple) → adapter selon besoin
-  cron.schedule('0 8 * * *', () => { void remindUpcomingFactures(); }, { timezone: 'Europe/Paris' });
+  cron.schedule('0 8 * * *', () => { void remindUpcomingFactures(); }, { timezone: 'Africa/Abidjan' });
 }
 
 // Optionnel: export manuel si besoin d'appeler depuis un endpoint admin

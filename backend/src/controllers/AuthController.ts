@@ -26,38 +26,34 @@ export const Register = async (req: Request, res: Response) => {
         const user = new UserModel({ firstName, lastName, email, phone: normalizedPhone, password });
 
         await user.save();
-
-                // Génération token après save (id garanti)
-                const token = generateToken(user._id.toString());
-
-                // Cookie JWT HTTP-Only
-                const cookieSecure = (process.env.JWT_COOKIE_SECURE_IN_PROD === 'true' && process.env.NODE_ENV === 'production')
-                    || process.env.JWT_COOKIE_SECURE === 'true';
-                res.cookie('token', token, {
-                    httpOnly: process.env.JWT_COOKIE_HTTP_ONLY !== 'false',
-                    secure: cookieSecure,
-                    sameSite: (process.env.JWT_COOKIE_SAME_SITE as any) || 'lax',
-                    maxAge: 24 * 60 * 60 * 1000,
-                    path: '/',
-                });
-
-                // On évite de renvoyer le hash du mot de passe
-                const userSafe = {
-                    id: user._id,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    phone: user.phone,
-                    role: user.role,
-                    isVerified: user.isVerified,
-                    createdAt: user.createdAt,
-                };
-
-                return res.status(201).json({ message: "Inscription réussie", user: userSafe, token });
-    } catch (error: any) {
-        console.error("❌ Erreur Register:", error);
+        // Génération token après save (id garanti)
+          const token = generateToken(user._id.toString());
+          // Cookie JWT HTTP-Only
+          const cookieSecure = (process.env.JWT_COOKIE_SECURE_IN_PROD === 'true' && process.env.NODE_ENV === 'production') || process.env.JWT_COOKIE_SECURE === 'true';
+          res.cookie('token', token, {
+             httpOnly: process.env.JWT_COOKIE_HTTP_ONLY !== 'false',
+             secure: cookieSecure,
+             sameSite: (process.env.JWT_COOKIE_SAME_SITE as any) || 'lax',
+             maxAge: 24 * 60 * 60 * 1000,
+             path: '/',
+            });
+            // On évite de renvoyer le hash du mot de passe
+            const userSafe = {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+                isVerified: user.isVerified,
+                createdAt: user.createdAt,
+            };
+                
+            return res.status(201).json({ message: "Inscription réussie", user: userSafe, token });
+        } catch (error: any) {
+            console.error("❌ Erreur Register:", error);
         // Erreurs de validation Mongoose → 400
-        if (error?.name === "ValidationError") {
+         if (error?.name === "ValidationError") {
             return res.status(400).json({ message: "Validation échouée", details: error.errors });
         }
         return res.status(500).json({ message: "Erreur lors de l'inscription" });

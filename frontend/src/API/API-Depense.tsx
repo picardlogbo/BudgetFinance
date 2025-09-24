@@ -41,8 +41,9 @@ export const createDepense = async ( depenseData:depenseFormData ) => {
 /**
  * Récupérer toutes les dépenses de l’utilisateur connecté
  */
-export const getDepenses = async () => {
-  const response = await fetch(`${API_BASE_URL}/depenses`, {
+export const getDepenses = async (options?: { includeArchived?: boolean }) => {
+  const qs = options?.includeArchived ? '?includeArchived=1' : '';
+  const response = await fetch(`${API_BASE_URL}/depenses${qs}`, {
     method: "GET",
     credentials: "include",
   });
@@ -88,4 +89,54 @@ export const deleteDepense = async (depenseId: string) => {
   }
 
   return true;
+};
+
+// --- Archivage ---
+export const getArchivedDepenses = async () => {
+  const response = await fetch(`${API_BASE_URL}/depenses/archived`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+  if(!response.ok) throw new Error('Erreur récupération archivées');
+  return response.json();
+};
+
+export const getArchivedDepensesSecure = async (password: string) => {
+  const response = await fetch(`${API_BASE_URL}/depenses/archived/secure`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  if(!response.ok) throw new Error('Mot de passe invalide ou erreur serveur');
+  return response.json();
+};
+
+export const archiveDepense = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/depenses/${id}/archive`, {
+    method: 'POST',
+    credentials: 'include'
+  });
+  if(!response.ok) throw new Error('Erreur archivage');
+  return response.json();
+};
+
+export const unarchiveDepense = async (id: string, password: string) => {
+  const response = await fetch(`${API_BASE_URL}/depenses/${id}/unarchive`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  if(!response.ok) throw new Error('Erreur désarchivage');
+  return response.json();
+};
+
+export const unarchiveAllDepenses = async () => {
+  const response = await fetch(`${API_BASE_URL}/depenses/unarchive-all`, {
+    method: 'POST',
+    credentials: 'include'
+  });
+  if(!response.ok) throw new Error('Erreur désarchivage global');
+  return response.json();
 };

@@ -8,6 +8,7 @@ export interface ToastMessageProps {
     // onClose: () => void;
 }
 
+// Infos utilisateur stockées dans le contexte
 export interface UserInfo {
     id: string;
     email: string;

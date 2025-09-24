@@ -61,14 +61,29 @@ import BudgetModel, { Budget } from "../models/BudgetModel.js";
 // };
 
 
+// Création/édition d'un budget (idempotent)
+// Contexte:
+// - Les dépenses créent désormais automatiquement (upsert) une ligne de budget mensuel
+//   pour (user, categorie, mois, annee) et incrémentent montantDepense.
+// - Cet endpoint doit donc agir comme un "setter" du montant alloué (montantAlloue)
+//   pour la clé logique du budget. S'il existe déjà, on met à jour; sinon on crée.
+// Bénéfices:
+// - Pas d'erreur 409 côté front quand un budget a été pré-créé par une dépense
+// - Flux plus simple: l'utilisateur peut définir/ajuster le montant alloué à tout moment
 export const CreateBudget = async (req: Request, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Non autorisé" });
 
     const userId = (user as any)._id ?? user;
-    let { categorie, montantAlloue, mois, annee } = req.body;
+    let { categorie, montantAlloue, mois, annee } = req.body as {
+      categorie?: string;
+      montantAlloue?: number;
+      mois?: number;
+      annee?: number;
+    };
 
+    // Validation basique des entrées
     const errors: string[] = [];
     if (!categorie) errors.push("categorie requise");
     if (mois === undefined) errors.push("mois requis");
@@ -78,27 +93,33 @@ export const CreateBudget = async (req: Request, res: Response) => {
     if (montantAlloue !== undefined && (typeof montantAlloue !== "number" || montantAlloue < 0)) {
       errors.push("montantAlloue invalide");
     }
-
     if (errors.length) {
       return res.status(400).json({ message: "Validation échouée", errors });
     }
 
-    // ⚠️ Ne pas forcer en lowerCase
-    categorie = categorie.trim();
+    // Normalisation: garder la casse telle quelle côté UI (pas de lowerCase forcé)
+    categorie = categorie!.trim();
     montantAlloue = montantAlloue ?? 0;
 
-    // Vérifier les doublons
+    // Recherche d'un budget existant pour la clé logique
     const existing = await BudgetModel.findOne({ user: userId, categorie, mois, annee });
+
     if (existing) {
-      return res.status(409).json({ message: "Budget déjà existant pour cette période" });
+      // Idempotence: on MET À JOUR le montant alloué au lieu de renvoyer 409
+      // - On ne touche pas à montantDepense ici (il est piloté par les dépenses)
+      // - On peut réactiver le budget si besoin
+      existing.montantAlloue = montantAlloue;
+      (existing as any).isActive = true;
+      await existing.save();
+      return res.status(200).json(existing);
     }
 
-    // Créer
+    // Création si absent
     const budget = new BudgetModel({
       user: userId,
       categorie,
       montantAlloue,
-      montantDepense: 0,
+      montantDepense: 0, // sera incrémenté par les dépenses
       mois,
       annee,
     });
@@ -121,7 +142,7 @@ export const GetBudgets = async (req: Request, res: Response) => {
 
     res.status(200).json(budgets);
   } catch (error) {
-    console.error("Erreur GetBudgets:", error);-
+    console.error("Erreur GetBudgets:", error);
     res.status(500).json({ message: "Erreur lors de la récupération des budgets" });
   }
 };
